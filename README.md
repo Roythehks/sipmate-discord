@@ -1,120 +1,38 @@
-# SipMate
+# 串串串
 
-A Discord bot for hydration tracking and reminders. Built with discord.py 2.3+.
+燕雲機器人。有人用指定 emoji 對訊息按反應時，在同一頻道用那個人的暱稱和頭像重發一次。
 
-## Features
+## 功能
 
-- **Hydration Tracking** — Log water intake with `/log` and track progress toward daily goals (8 cups / 1920ml)
-- **Progress Visualization** — Visual progress bars and status emojis in rich embeds
-- **Automatic Reminders** — Hourly hydration reminders in configured channels (UTC+8)
-- **Custom Schedules** — `/reset` to set a personalized tracking timeline
-- **User Stats** — `/stats` for detailed hydration dashboard
-- **Role Management** — Auto-creates and assigns a "💧 Hydrated" role on server join
+- 預設觸發 emoji 是 ➕，每個伺服器可用 `/setmimicemoji` 修改
+- 監聽機器人看得到的文字頻道與討論串
+- 狀態固定為「正在抽八音」
 
-## Commands
+## 指令
 
-| Command | Description | Permission |
-|---------|-------------|------------|
-| `/water` | View hydration progress with progress bar | Everyone |
-| `/log <cups>` | Log water intake (1-20 cups) | Everyone |
-| `/stats` | Detailed hydration dashboard | Everyone |
-| `/tip` | Random hydration tip | Everyone |
-| `/hydrate @user` | Send reminder to a specific user | Everyone |
-| `/reset` | Reset daily tracking timeline | Everyone |
-| `/menu` | Interactive command menu | Everyone |
-| `/invite` | Get bot invite link | Everyone |
-| `/support` | Support information | Everyone |
-| `/setchannel` | Enable auto-reminders in current channel | Admin |
-| `/removechannel` | Disable auto-reminders | Admin |
+| 指令 | 說明 | 權限 |
+|------|------|------|
+| `/setmimicemoji` | 設定觸發重發的 emoji | 管理員 |
 
-## Setup
+## 設定
 
-### Prerequisites
+1. 安裝依賴：`pip install -r requirements.txt`
+2. 在 `config.env` 寫入 `DISCORD_BOT_TOKEN`
+3. 執行 `python run.py`
 
-- Python 3.8+
-- A Discord bot token ([Discord Developer Portal](https://discord.com/developers/applications))
+邀請時需要 **Manage Webhooks**、Read Message History、View Channels、Use Slash Commands。
 
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/your-username/dc2.git
-cd dc2
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Create `config.env` and add your bot token:
-
-```env
-DISCORD_BOT_TOKEN=your_token_here
-```
-
-4. Run the bot:
-
-```bash
-python run.py
-```
-
-### Bot Permissions
-
-When inviting the bot, grant these permissions:
-
-- Send Messages
-- Manage Roles
-- Use Slash Commands
-- Embed Links
-- Read Message History
-- Add Reactions
-- View Channels
-
-## Project Structure
+## 專案結構
 
 ```
 dc2/
-├── bot.py              # Main bot entry point and event handlers
-├── run.py              # Runner script with environment loading
-├── utils.py            # Utility functions and constants
-├── data_manager.py     # JSON data persistence layer
-├── config.env          # Environment variables (not committed)
-├── requirements.txt    # Python dependencies
+├── bot.py
+├── run.py
+├── utils.py
+├── data_manager.py
 ├── cogs/
-│   ├── commands.py     # User-facing slash commands
-│   ├── admin.py        # Admin-only commands
-│   └── tasks.py        # Scheduled tasks and loops
+│   ├── mimic.py
+│   └── tasks.py
 └── data/
-    ├── user_progress.json
-    ├── user_reset_times.json
-    └── reminder_channels.json
+    └── mimic_emojis.json
 ```
-
-## Configuration
-
-### Constants (`utils.py`)
-
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `DAILY_GOAL_CUPS` | 8 | Daily water intake goal |
-| `ML_PER_CUP` | 240 | Milliliters per cup |
-| `DAILY_GOAL_ML` | 1920 | Daily goal in ml (auto-calculated) |
-
-### Reminder Schedule
-
-Reminders send at :30 past every hour (UTC+8) to channels configured via `/setchannel`.
-
-## Data Storage
-
-User data is stored locally in JSON files under the `data/` directory:
-
-- `user_progress.json` — Daily water intake logs per user
-- `user_reset_times.json` — Custom reset timestamps
-- `reminder_channels.json` — Server-to-channel mapping for auto-reminders
-
-## License
-
-This project is open source and available under the MIT License.

@@ -1,11 +1,9 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import random
 import asyncio
 import os
-from datetime import datetime, timezone
-from utils import STATUS_MESSAGES # For the initial status set
+from utils import BOT_DESCRIPTION, BOT_DISPLAY_NAME, BOT_STATUS
 import data_manager
 
 # Try to load environment variables using python-dotenv
@@ -39,26 +37,48 @@ except ImportError:
 # Bot configuration
 intents = discord.Intents.default()
 intents.message_content = True
+intents.reactions = True
 bot = commands.Bot(command_prefix='/', intents=intents)
 
 # Set up data files and load data
 data_manager.setup_data_files()
-bot.reminder_channels = data_manager.load_reminder_channels()
-bot.user_reset_times = data_manager.load_user_reset_times()
+bot.mimic_emojis = data_manager.load_mimic_emojis()
+
+async def apply_bot_profile():
+    """Set the Discord display name, application description, and custom status."""
+    if bot.user is not None and bot.user.name != BOT_DISPLAY_NAME:
+        try:
+            await bot.user.edit(username=BOT_DISPLAY_NAME)
+            print(f"✅ Bot name set to: {BOT_DISPLAY_NAME}")
+        except discord.HTTPException as e:
+            print(f"❌ Could not set bot username: {e}")
+            try:
+                await bot.http.edit_profile({"global_name": BOT_DISPLAY_NAME})
+                print(f"✅ Display name set to: {BOT_DISPLAY_NAME}")
+            except discord.HTTPException as name_error:
+                print(f"❌ Could not set display name: {name_error}")
+
+    try:
+        application = await bot.application_info()
+        if application.description != BOT_DESCRIPTION:
+            await application.edit(description=BOT_DESCRIPTION)
+            print(f"✅ Description set to: {BOT_DESCRIPTION}")
+    except discord.HTTPException as e:
+        print(f"❌ Could not set description: {e}")
+
+    try:
+        activity = discord.CustomActivity(name=BOT_STATUS)
+        await bot.change_presence(status=discord.Status.online, activity=activity)
+        print(f"✅ Status set to: {BOT_STATUS}")
+    except discord.HTTPException as e:
+        print(f"❌ Could not set status: {e}")
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} (SipMate) has connected to Discord!')
+    print(f'{bot.user} ({BOT_DISPLAY_NAME}) has connected to Discord!')
     print(f'Bot is in {len(bot.guilds)} servers')
-    
-    # Set initial bot status
-    status_message = random.choice(STATUS_MESSAGES)
-    try:
-        activity = discord.Game(name=status_message)
-        await bot.change_presence(status=discord.Status.online, activity=activity)
-        print(f"✅ Initial status set to: Playing {status_message}")
-    except Exception as e:
-        print(f"❌ Error setting initial status: {e}")
+
+    await apply_bot_profile()
     
     # Sync slash commands
     try:
@@ -66,75 +86,6 @@ async def on_ready():
         print(f"✅ Synced {len(synced)} slash commands")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
-    
-    # Auto-assign roles on startup
-    for guild in bot.guilds:
-        try:
-            hydrated_role = discord.utils.get(guild.roles, name="💧 Hydrated")
-            if hydrated_role and hydrated_role not in guild.me.roles:
-                await guild.me.add_roles(hydrated_role, reason="SipMate bot auto-assignment on startup")
-                print(f"✅ Auto-assigned '💧 Hydrated' role to bot in {guild.name}")
-        except Exception as e:
-            print(f"❌ Could not auto-assign role in {guild.name}: {e}")
-
-@bot.event
-async def on_guild_join(guild):
-    """Create a hydration role when joining a new server"""
-    try:
-        light_blue = discord.Color(0x87CEEB)
-        
-        existing_role = discord.utils.get(guild.roles, name="💧 Hydrated")
-        if existing_role:
-            print(f"Role '💧 Hydrated' already exists in {guild.name}")
-            if existing_role not in guild.me.roles:
-                try:
-                    await guild.me.add_roles(existing_role, reason="SipMate bot auto-assignment")
-                    print(f"✅ Assigned existing '💧 Hydrated' role to bot in {guild.name}")
-                except Exception as e:
-                    print(f"❌ Could not assign existing role to bot in {guild.name}: {e}")
-            return
-        
-        role = await guild.create_role(
-            name="💧 Hydrated",
-            color=light_blue,
-            reason="SipMate hydration tracking role",
-            mentionable=True
-        )
-        
-        print(f"✅ Created '💧 Hydrated' role in {guild.name}")
-        
-        try:
-            await guild.me.add_roles(role, reason="SipMate bot auto-assignment")
-            print(f"✅ Assigned '💧 Hydrated' role to bot in {guild.name}")
-        except Exception as e:
-            print(f"❌ Could not assign role to bot in {guild.name}: {e}")
-        
-        channels = [ch for ch in guild.text_channels if ch.permissions_for(guild.me).send_messages]
-        
-        if channels:
-            welcome_channel = discord.utils.get(channels, name='general') or \
-                              discord.utils.get(channels, name='welcome') or \
-                              channels[0]
-            
-            embed = discord.Embed(
-                title="💧 SipMate has joined the server!",
-                description="🌊 Your personal hydration assistant! Track water intake, get reminders, see beautiful progress bars, and stay healthy. Custom schedules, automatic notifications, and personalized stats. Drink up! 💧",
-                color=light_blue,
-                timestamp=datetime.now(timezone.utc)
-            )
-            embed.add_field(name="🚀 Get Started", value="`/water` - Check your hydration progress\n`/reset` - Set your personal schedule\n`/help` - See all commands", inline=True)
-            embed.add_field(name="🎯 Features", value="• Personal progress tracking\n• Beautiful progress bars\n• Custom daily schedules\n• Automatic reminders", inline=True)
-            embed.add_field(name="🏷️ Role Created", value=f"I've created the {role.mention} role for hydration enthusiasts!\n✅ I've also assigned it to myself!", inline=False)
-            embed.set_footer(text="SipMate • Your hydration companion")
-            
-            try:
-                await welcome_channel.send(embed=embed)
-                print(f"✅ Sent welcome message to #{welcome_channel.name} in {guild.name}")
-            except Exception as e:
-                print(f"❌ Could not send welcome message in {guild.name}: {e}")
-                
-    except Exception as e:
-        print(f"❌ Error creating role in {guild.name}: {e}")
 
 # Error handling for slash commands
 @bot.tree.error
